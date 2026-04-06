@@ -330,19 +330,30 @@ get_cpu(){
 #{{{ ENVIROMENT
 
 get_res(){
-    if type -p xrandr >/dev/null; then
-
+    if [[ "$WAYLAND_DISPLAY" ]]; then
+        # KDE Plasma / kwin_wayland
+        if type -p kscreen-doctor >/dev/null; then
+            resolution="$(kscreen-doctor -o 2>/dev/null | \
+                          awk '/Modes:/ {for(i=1;i<=NF;i++) if($i ~ /[0-9]+x[0-9]+/ && $i !~ /^[0-9]+$/) {gsub(/\*.*$/,"",$i); print $i; exit}}')"
+        fi
+        # wlroots compositors (sway, hyprland, etc.)
+        if [[ -z "$resolution" ]] && type -p wlr-randr >/dev/null; then
+            resolution="$(wlr-randr 2>/dev/null | awk '/[0-9]+x[0-9]+/ && /current/ {print $1; exit}')"
+        fi
+        # Generic fallback: read active mode from kernel DRM
+        if [[ -z "$resolution" ]]; then
+            resolution="$(cat /sys/class/drm/*/modes 2>/dev/null | head -1)"
+        fi
+    elif type -p xrandr >/dev/null; then
         resolution="$(xrandr --nograb --current |\
                       awk -F 'connected |\\+|\\(' \
                              '/ connected/ && $2 {printf $2 ", "}')"
         resolution="${resolution/primary }"
         resolution="${resolution//\*}"
-
     elif type -p xwininfo >/dev/null; then
         read -r w h \
             < <(xwininfo -root | awk -F':' '/Width|Height/ {printf $2}')
         resolution="${w}x${h}"
-
     elif type -p xdpyinfo >/dev/null; then
         resolution="$(xdpyinfo | awk '/dimensions:/ {printf $2}')"
     fi
@@ -353,7 +364,12 @@ get_res(){
 }
 get_wm(){
     ((wm_run == 1)) && return
-    if [[ "$DISPLAY" ]]; then
+    if [[ "$WAYLAND_DISPLAY" ]]; then
+        # Prefer the session desktop name, fall back to current desktop
+        wm="${XDG_SESSION_DESKTOP:-${XDG_CURRENT_DESKTOP}}"
+        # Capitalise first letter for display
+        wm="${wm^}"
+    elif [[ "$DISPLAY" ]]; then
         id="$(xprop -root -notype _NET_SUPPORTING_WM_CHECK)"
         id="${id##* }"
         if [[ "$id" != "found." ]]; then
@@ -763,7 +779,7 @@ END
 
 get_term_font > /dev/null 2>&1
 
-if [ -n "$DISPLAY" ]; then
+if [[ -n "$DISPLAY" || -n "$WAYLAND_DISPLAY" ]]; then
     res=$(get_res)
     wmname=$(get_wm)
     term=$(get_term)

@@ -56,9 +56,7 @@ echo -e " ${bu}SMD-Linux Installation Script Version${b} $version ${enda} ${endc
 
 echo "If you get an error -- Remote key not fetched correctly from keyserver"
 echo
-echo "Add this line to /etc/pacman.d/gnupg/gpg.conf"
-echo "keyserver hkp://ipv4.pool.sks-keyservers.net:11371"
-echo "or one of these:"
-echo "keyserver hkps://hkps.pool.sks-keyservers.net:443"
-echo "keyserver hkp://pool.sks-keyservers.net:80"
-echo "keyserver hkp://keys.gnupg.net:11371"
+echo "Add one of these lines to /etc/pacman.d/gnupg/gpg.conf"
+echo "keyserver hkp://keyserver.ubuntu.com:80"
+echo "keyserver hkps://keyserver.ubuntu.com"
+echo "keyserver hkps://keys.openpgp.org"
